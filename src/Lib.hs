@@ -4,6 +4,10 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Lib
   ( Zipper
   , zipper
@@ -19,6 +23,10 @@ import Control.Lens hiding ((:<), children)
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Applicative.Backwards
+import Control.Comonad
+import Data.Foldable
+import Data.List (unfoldr)
+import Control.Applicative
 
 class (Functor f) => Idx (f :: * -> *) where
   type IxOf f :: *
@@ -31,13 +39,31 @@ instance Idx [] where
 data Zipper (f :: * -> *) a = Zipper
   { parents :: [(IxOf f, Cofree f a)]
   , _focus :: Cofree f a
-  }
+  } deriving Functor
+
+focus :: Lens' (Zipper f a) a
+focus f (Zipper parents foc) = Zipper parents <$> (foc & _extract %%~ f)
+
 
 -- TODO: implement probper comonad instance
 extract :: Zipper f a -> a
 extract (Zipper _ (a:<_)) = a
 
-makeLenses ''Zipper
+-- instance Functor f => Comonad (Zipper f) where
+--   extract = extract . _focus
+--   duplicate :: forall f a. (Zipper f a) -> Zipper f (Zipper f a)
+--   duplicate z@(Zipper parents foc) = Zipper (zipWith (\z (i,_) -> (i, z)) rezippedParents parents) (foc $> z)
+--     where
+--       rezippedParents :: [Zipper f a]
+--       rezippedParents = unfoldr go z
+--       go current =
+--         let x = up current
+--          in liftA2 (,) x x
+--       -- go (current, []) = Nothing
+--       -- go :: (Zipper f a, [(IxOf f, Cofree f a)]) -> Maybe (_, Cofree f a)
+--       -- go = _
+
+
 
 zipper :: Cofree f a -> Zipper f a
 zipper f = Zipper [] f
