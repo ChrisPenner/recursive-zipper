@@ -45,7 +45,7 @@ focus :: Lens' (Zipper f a) a
 focus f (Zipper parents foc) = Zipper parents <$> (foc & _extract %%~ f)
 
 
--- TODO: implement probper comonad instance
+-- TODO: implement proper comonad instance
 extract :: Zipper f a -> a
 extract (Zipper _ (a:<_)) = a
 
