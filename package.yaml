@@ -31,25 +31,3 @@ dependencies:
 
 library:
   source-dirs: src
-
-executables:
-  recursion-zipper-exe:
-    main:                Main.hs
-    source-dirs:         app
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - recursion-zipper
-
-tests:
-  recursion-zipper-test:
-    main:                Spec.hs
-    source-dirs:         test
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - recursion-zipper

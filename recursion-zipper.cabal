@@ -25,7 +25,7 @@ source-repository head
 
 library
   exposed-modules:
-      Lib
+      Zipper
   other-modules:
       Paths_recursion_zipper
   hs-source-dirs:
@@ -38,44 +38,5 @@ library
     , lens
     , mtl
     , recursion-schemes
-    , transformers
-  default-language: Haskell2010
-
-executable recursion-zipper-exe
-  main-is: Main.hs
-  other-modules:
-      Paths_recursion_zipper
-  hs-source-dirs:
-      app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      base >=4.7 && <5
-    , comonad
-    , containers
-    , free
-    , lens
-    , mtl
-    , recursion-schemes
-    , recursion-zipper
-    , transformers
-  default-language: Haskell2010
-
-test-suite recursion-zipper-test
-  type: exitcode-stdio-1.0
-  main-is: Spec.hs
-  other-modules:
-      Paths_recursion_zipper
-  hs-source-dirs:
-      test
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      base >=4.7 && <5
-    , comonad
-    , containers
-    , free
-    , lens
-    , mtl
-    , recursion-schemes
-    , recursion-zipper
     , transformers
   default-language: Haskell2010
