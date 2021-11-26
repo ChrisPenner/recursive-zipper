@@ -23,54 +23,53 @@ module Zipper
     children,
     ichildren,
     focus,
-    unwrapped,
+    focus_,
+    unwrapped_,
     tagged,
     fromRecursive,
     Idx (..),
     tug,
     foldSpine,
     retag,
-    branches
+    branches,
+    branches_,
+    currentIndex,
   )
 where
 
-import Control.Applicative
 import Control.Applicative.Backwards
-import Control.Comonad
 import qualified Control.Comonad as Comonad
 import Control.Comonad.Cofree
 import qualified Control.Comonad.Cofree as Cofree
 import qualified Control.Comonad.Trans.Cofree as CofreeF
 import Control.Lens hiding (children, (:<))
 import Control.Monad
-import Control.Monad.Free
-import Data.Foldable
-import Data.Functor.Compose
 import qualified Data.Functor.Foldable as FF
-import Data.List (unfoldr)
 import Data.Maybe
 
-class (Functor f) => Idx (f :: * -> *) where
+class (TraversableWithIndex (IxOf f) f) => Idx (f :: * -> *) where
   type IxOf f :: *
   idx :: IxOf f -> Traversal' (f a) a
-  ixes :: f x -> [IxOf f]
 
 instance Idx [] where
   type IxOf [] = Int
-  idx i = ix i
-  ixes xs = [0..length xs - 1]
+  idx = ix
 
 data Zipper (f :: * -> *) a = Zipper
   { parents :: [(IxOf f, Cofree f a)],
-    _focus :: Cofree f a
+    focus :: Cofree f a
   }
   deriving (Functor)
 
-focus :: Lens' (Zipper f a) a
-focus f (Zipper parents foc) = Zipper parents <$> (foc & _extract %%~ f)
+currentIndex :: Zipper f a -> Maybe (IxOf f)
+currentIndex (Zipper ((i, _) : _) _) = Just i
+currentIndex _ = Nothing
 
-unwrapped :: Lens' (Zipper f a) (Cofree f a)
-unwrapped f (Zipper parents foc) = Zipper parents <$> f foc
+focus_ :: Lens' (Zipper f a) a
+focus_ f (Zipper parents foc) = Zipper parents <$> (foc & _extract %%~ f)
+
+unwrapped_ :: Lens' (Zipper f a) (Cofree f a)
+unwrapped_ f (Zipper parents foc) = Zipper parents <$> f foc
 
 -- TODO: implement proper comonad instance
 extract :: Zipper f a -> a
@@ -111,16 +110,13 @@ up _ = Nothing
 
 rezip :: Idx f => Zipper f a -> Cofree f a
 rezip z = case up z of
-  Nothing -> _focus z
+  Nothing -> focus z
   Just p -> rezip p
 
 flatten :: (FF.Corecursive f, Idx (FF.Base f)) => Zipper (FF.Base f) a -> f
 flatten = FF.cata alg . rezip
   where
     alg (_ CofreeF.:< fv) = FF.embed fv
-
-fold :: (Idx f, Functor f) => ((a, f r) -> r) -> Zipper f a -> r
-fold f = FF.cata (\(a CofreeF.:< fr) -> f (a, fr)) . rezip
 
 -- | Move to a sibling
 sibling :: Idx f => IxOf f -> Zipper f a -> Maybe (Zipper f a)
@@ -135,6 +131,12 @@ children f (Zipper parents current) = Zipper parents <$> (current & _unwrap . tr
 branches :: Zipper f a -> f (Cofree f a)
 branches (Zipper _ (_ :< cs)) = cs
 
+branches_ :: Lens' (Zipper f a) (f (Cofree f a))
+branches_ = lens getter setter
+  where
+    getter (Zipper _ (_ :< f)) = f
+    setter (Zipper p (a :< _)) f = (Zipper p (a :< f))
+
 ichildren :: TraversableWithIndex i f => IndexedTraversal' i (Zipper f a) (Cofree f a)
 ichildren f (Zipper parents current) = Zipper parents <$> (current & _unwrap . itraversed %%@~ \i a -> indexed f i a)
 
@@ -143,22 +145,25 @@ roseTree = 1 :< [2 :< [], 3 :< [4 :< [], 5 :< []]]
 
 -- Recomputes the spine at the current position, then at every position from that point
 -- upwards until the zipper is closed, returning the result.
--- foldSpine :: (Functor f, Idx f) => (f a -> a) -> Zipper f a -> a
--- foldSpine f z@(Zipper parents (a :< cs)) =
---   let next = f (fmap Comonad.extract cs)
---    in case up (Zipper parents (next :< cs)) of
---         Nothing -> next
---         Just nz -> foldSpine f nz
-
-foldSpine :: (Functor f, Idx f) => (f a -> a) -> Zipper f a -> a
+foldSpine :: (Functor f, Idx f) => (a -> f a -> a) -> Zipper f a -> a
 foldSpine f z =
   case up z of
     Nothing -> Zipper.extract z
     Just (Zipper parents (a :< cs)) ->
-      let next = f (fmap Comonad.extract cs)
+      let next = f a (fmap Comonad.extract cs)
        in foldSpine f (Zipper parents (next :< cs))
 
-retag :: Functor f => (f b -> b) -> Cofree f a -> Cofree f b
+retag :: Functor f => (a -> f b -> b) -> Cofree f a -> Cofree f b
 retag f (a :< fr) =
   let cs = fmap (retag f) fr
-   in (f $ fmap Comonad.extract cs) :< cs
+   in (f a $ fmap Comonad.extract cs) :< cs
+
+-- foldZipper :: forall f a r. Functor f => (a -> f r -> r) -> Zipper f a -> r
+-- foldZipper f (Zipper parents foc) =
+--   FF.cata alg foc
+--   where
+--     alg :: CofreeF.CofreeF f a r -> r
+--     alg (a CofreeF.:< fr) = f a fr
+
+fold :: (Idx f, Functor f) => (a -> f r -> r) -> Zipper f a -> r
+fold f = FF.cata (\(a CofreeF.:< fr) -> f a fr) . rezip
