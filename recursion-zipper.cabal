@@ -25,6 +25,7 @@ source-repository head
 
 library
   exposed-modules:
+      Idx
       Zipper
   other-modules:
       Paths_recursion_zipper
