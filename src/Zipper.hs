@@ -6,10 +6,12 @@
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Zipper
   ( Zipper,
@@ -44,6 +46,7 @@ import qualified Control.Comonad.Cofree as Cofree
 import qualified Control.Comonad.Trans.Cofree as CofreeF
 import Control.Lens hiding (children, (:<))
 import Control.Monad
+import Data.Functor.Classes
 import qualified Data.Functor.Foldable as FF
 import Data.Maybe
 
@@ -60,6 +63,11 @@ data Zipper (f :: * -> *) a = Zipper
     focus :: Cofree f a
   }
   deriving (Functor)
+
+-- deriving instance (Eq1 f, Eq (IxOf f), Eq a) => Eq (Zipper f a)
+deriving instance (Eq1 f, Eq (IxOf f), Eq a) => Eq (Zipper f a)
+
+deriving instance (Ord1 f, Ord (IxOf f), Ord a) => Ord (Zipper f a)
 
 currentIndex :: Zipper f a -> Maybe (IxOf f)
 currentIndex (Zipper ((i, _) : _) _) = Just i
