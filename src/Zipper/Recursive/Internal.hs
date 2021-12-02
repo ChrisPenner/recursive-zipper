@@ -43,12 +43,14 @@ deriving instance (Eq1 f, Eq i, Eq a) => Eq (Zipper i f a)
 deriving instance (Ord1 f, Ord i, Ord a) => Ord (Zipper i f a)
 
 -- | Get the location of the current selection within its parent if we have one.
--- @O(1)
+--
+-- @O(1)@
 currentIndex :: Zipper i f a -> Maybe i
 currentIndex (Zipper ((i, _) : _) _) = Just i
 currentIndex _ = Nothing
 
 -- | Get the path to the current value from the root of the structure.
+--
 -- @O(depth)
 currentPath :: Zipper i f a -> [i]
 currentPath (Zipper parents _) = reverse $ fmap fst parents
@@ -101,17 +103,20 @@ tagged :: FF.Recursive t => (t -> a) -> t -> Zipper i (FF.Base t) a
 tagged f t = zipper $ Cofree.unfold (\x -> (f x, FF.project x)) t
 
 -- | Select the subtree at the given location.
+--
 -- @O(1)@
 down :: (Idx i f a) => i -> Zipper i f a -> Maybe (Zipper i f a)
 down i (Zipper parents current) = Zipper ((i, current) : parents) <$> (current ^? _unwrap . ix i)
 
 -- | Select the parent of the current location.
+--
 -- @O(1)@
 up :: Idx i f a => Zipper i f a -> Maybe (Zipper i f a)
 up (Zipper ((i, p) : parents) current) = Just $ Zipper parents (p & _unwrap . ix i .~ current)
 up _ = Nothing
 
 -- | Re-zip the entire tree.
+--
 -- @O(d)@
 rezip :: Idx i f a => Zipper i f a -> Cofree f a
 rezip z = case up z of
@@ -119,6 +124,7 @@ rezip z = case up z of
   Just p -> rezip p
 
 -- | Rezip, forget all tags, and flatten the structure.
+--
 -- @O(d)@
 flatten :: (FF.Corecursive f, Idx i (FF.Base f) a) => Zipper i (FF.Base f) a -> f
 flatten = FF.cata alg . rezip
@@ -126,11 +132,12 @@ flatten = FF.cata alg . rezip
     alg (_ CofreeF.:< fv) = FF.embed fv
 
 -- | Move to the sibling which is located at 'i' in its parent.
+--
 -- @O(1)@
 --
--- @@
+-- @
 -- sibling i = up >=> down i
--- @@
+-- @
 sibling :: Idx i f a => i -> Zipper i f a -> Maybe (Zipper i f a)
 sibling i = up >=> down i
 
@@ -146,7 +153,8 @@ ichildren_ :: TraversableWithIndex i f => IndexedTraversal' i (Zipper i f a) (Co
 ichildren_ f (Zipper parents current) = Zipper parents <$> (current & _unwrap . itraversed %%@~ \i a -> indexed f i a)
 
 -- | Get the base-functor at the current location.
--- @O(1)
+--
+-- @O(1)@
 branches :: Zipper i f a -> f (Cofree f a)
 branches (Zipper _ (_ :< cs)) = cs
 
@@ -163,6 +171,7 @@ branches_ = lens getter setter
 --    in (f a $ fmap Comonad.extract cs) :< cs
 
 -- | Fold a zipper from bottom to top.
--- @O(n)
+--
+-- @O(n)@
 fold :: (Functor f, Idx i f a) => (a -> f r -> r) -> Zipper i f a -> r
 fold f = FF.cata (\(a CofreeF.:< fr) -> f a fr) . rezip
