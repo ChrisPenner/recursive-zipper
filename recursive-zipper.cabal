@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           recursive-zipper
-version:        0.0.0.0
+version:        0.0.0.1
 synopsis:       Zippers over recursive data structures.
 description:    Please see the README on GitHub at <https://github.com/ChrisPenner/recursive-zipper#readme>
 category:       Data
